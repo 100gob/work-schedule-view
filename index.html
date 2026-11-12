@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>업무스케줄</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e4e2dc; --accent:#2f5d8a; --on-accent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#151514; --card:#1f1f1d; --ink:#ecebe6; --muted:#a3a19a; --line:#34332f; --accent:#7fb0e0; --on-accent:#10161c; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+           padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { flex: none; font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 20px;
+           background: var(--accent); color: var(--on-accent); cursor: pointer; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  pre { margin: 0; padding: 16px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
+        background: var(--card); border: 1px solid var(--line); border-radius: 12px; font: inherit; }
+  .msg { color: var(--muted); padding: 32px 4px; }
+</style>
+</head>
+<body>
+<header><h1 id="title">업무스케줄</h1><button id="copy" hidden>복사</button></header>
+<main><p class="msg" id="msg">불러오는 중…</p><pre id="text" hidden></pre></main>
+<script>
+// 보고서는 r/<id>.bin 에 AES-GCM으로 암호화돼 있고, 열쇠는 카톡 링크의 # 뒤에만 있다.
+const $ = id => document.getElementById(id);
+const fromB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const show = m => { $('msg').textContent = m; $('msg').hidden = false; };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+async function load() {
+  const [id, key] = location.hash.slice(1).split('.');
+  if (!id || !key || !/^[\w-]+$/.test(id)) { show('카톡으로 받은 링크로 열어주세요.'); return; }
+
+  // 방금 올린 보고서는 페이지 반영까지 1~2분 걸릴 수 있어 잠시 기다린다
+  let res;
+  for (let i = 0; i < 36; i++) {
+    res = await fetch('r/' + id + '.bin', { cache: 'no-store' });
+    if (res.ok) break;
+    show('보고서를 올리는 중이에요. 잠시만 기다려주세요…');
+    await wait(5000);
+  }
+  if (!res.ok) { show('보고서를 찾지 못했어요. 잠시 뒤 다시 열어주세요.'); return; }
+
+  try {
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const k = await crypto.subtle.importKey('raw', fromB64u(key), 'AES-GCM', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
+    const data = JSON.parse(new TextDecoder().decode(plain));
+    document.title = data.title;
+    $('title').textContent = data.title;
+    $('text').textContent = data.text;
+    $('text').hidden = false;
+    $('msg').hidden = true;
+    $('copy').hidden = false;
+    $('copy').onclick = () => copy(data.text);
+  } catch (e) {
+    show('링크가 올바르지 않아 보고서를 열 수 없어요.');
+  }
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    // 카톡 인앱 브라우저처럼 클립보드 API가 막힌 경우
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  $('copy').textContent = '복사됨 ✓';
+  setTimeout(() => { $('copy').textContent = '복사'; }, 2000);
+}
+
+load();
+</script>
+</body>
+</html>
