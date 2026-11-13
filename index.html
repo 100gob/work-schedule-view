@@ -2,82 +2,366 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
 <title>업무스케줄</title>
 <style>
-  :root { --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e4e2dc; --accent:#2f5d8a; --on-accent:#ffffff; }
+  :root {
+    --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e4e2dc; --soft:#efede8;
+    --accent:#2f5d8a; --on-accent:#ffffff; --accent-bg:#e7eef6;
+    --over:#b3412c; --over-bg:#fbebe7; --star:#b77f00; --ok:#2e7d4f; --wait:#8a5a00; --wait-bg:#fbf1dc;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#151514; --card:#1f1f1d; --ink:#ecebe6; --muted:#a3a19a; --line:#34332f; --accent:#7fb0e0; --on-accent:#10161c; }
+    :root {
+      --bg:#151514; --card:#1f1f1d; --ink:#ecebe6; --muted:#a3a19a; --line:#34332f; --soft:#2a2926;
+      --accent:#7fb0e0; --on-accent:#10161c; --accent-bg:#1d2a38;
+      --over:#f08a74; --over-bg:#3a221c; --star:#e8b53a; --ok:#6cc392; --wait:#e8c27a; --wait-bg:#3a2f1a;
+    }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); }
-  body { font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
-  header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-           padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
-  h1 { margin: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  button { flex: none; font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 20px;
-           background: var(--accent); color: var(--on-accent); cursor: pointer; }
-  main { max-width: 720px; margin: 0 auto; padding: 16px; }
-  pre { margin: 0; padding: 16px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
-        background: var(--card); border: 1px solid var(--line); border-radius: 12px; font: inherit; }
+  body { font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; -webkit-text-size-adjust: 100%; }
+  button { font: inherit; color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+  .bar .ttl { flex: 1; min-width: 0; }
+  h1 { margin: 0; font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sub { margin: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn { flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  main { max-width: 760px; margin: 0 auto; padding: 12px 16px 96px; }
   .msg { color: var(--muted); padding: 32px 4px; }
+  pre.plain { margin: 0; padding: 16px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; background: var(--card); border: 1px solid var(--line); border-radius: 12px; font: inherit; }
+
+  /* 요약 숫자 */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 12px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; text-align: center; cursor: pointer; }
+  .stat b { display: block; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .stat.over b { color: var(--over); }
+  .stat.today b { color: var(--accent); }
+  .stat.zero b { color: var(--muted); font-weight: 600; }
+
+  /* 검색·필터 */
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .search { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 12px; font: inherit; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 12px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .note { background: var(--accent-bg); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .note a { color: var(--accent); font-weight: 700; }
+  .warn { background: var(--over-bg); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .warn b { color: var(--over); }
+
+  /* 묶음 */
+  section.grp { margin-bottom: 14px; }
+  .gh { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 8px 2px; cursor: pointer; text-align: left; }
+  .gh .nm { font-weight: 800; font-size: 15px; }
+  .gh .ct { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 1px 8px; }
+  .gh.over .nm { color: var(--over); }
+  .gh.today .nm { color: var(--accent); }
+  .gh .chev { margin-left: auto; color: var(--muted); transition: transform .15s; }
+  .gh[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+  ul.list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+
+  /* 한 줄 */
+  li.row { display: grid; grid-template-columns: 44px 1fr; border-top: 1px solid var(--line); transition: opacity .25s, transform .25s; }
+  li.row:first-child { border-top: 0; }
+  li.row.snap { grid-template-columns: 14px 1fr; }
+  li.row.gone { opacity: 0; transform: translateX(24px); }
+  .chk { width: 44px; height: 48px; display: grid; place-items: center; background: none; border: 0; cursor: pointer; padding: 0; }
+  .chk i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+  .row.over .chk i { border-color: var(--over); }
+  .row.star .chk i { border-color: var(--star); }
+  .chk:hover i { background: var(--soft); }
+  .chk i::after { content: ""; width: 9px; height: 5px; border-left: 2px solid transparent; border-bottom: 2px solid transparent; transform: translateY(-1px) rotate(-45deg); }
+  .chk:hover i::after { border-color: var(--muted); }
+  .row.doing .chk i { background: var(--ok); border-color: var(--ok); }
+  .row.doing .chk i::after { border-color: #fff; }
+  .row.doing .t { text-decoration: line-through; color: var(--muted); }
+  .main { padding: 10px 12px 10px 0; cursor: pointer; min-width: 0; }
+  .main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .t { font-weight: 600; word-break: keep-all; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .row.open .t { -webkit-line-clamp: unset; display: block; }
+  .t .s { color: var(--star); margin-right: 3px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 3px; font-size: 12px; color: var(--muted); align-items: center; }
+  .due { font-weight: 700; }
+  .due.over { color: var(--over); }
+  .due.today { color: var(--accent); }
+  .tag { border-radius: 6px; padding: 0 6px; font-weight: 700; font-size: 11.5px; }
+  .tag.wait { background: var(--wait-bg); color: var(--wait); }
+  .tag.prog { background: var(--accent-bg); color: var(--accent); }
+  .tag.rep { background: var(--soft); color: var(--muted); }
+
+  /* 펼친 상세 */
+  .detail { grid-column: 2; padding: 0 14px 14px 0; }
+  .detail dl { margin: 0; display: grid; grid-template-columns: 56px 1fr; gap: 6px 10px; font-size: 13.5px; }
+  .detail dt { color: var(--muted); }
+  .detail dd { margin: 0; word-break: keep-all; overflow-wrap: anywhere; }
+  .detail code { font: 12.5px/1.4 ui-monospace, Consolas, monospace; background: var(--soft); border-radius: 4px; padding: 1px 4px; overflow-wrap: anywhere; }
+  .acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .acts .hint { font-size: 12px; color: var(--muted); }
+
+  .empty { padding: 14px 16px; color: var(--muted); font-size: 13.5px; }
+  .doneList li { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .doneList li:first-child { border-top: 0; }
+  .doneList .dt { flex: 1; min-width: 0; color: var(--muted); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .linkbtn { background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; padding: 4px 2px; flex: none; }
+  pre.dash { margin: 0; padding: 14px 16px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; font: 13px/1.6 inherit; font-family: inherit; }
+
+  #toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10;
+           display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); background: var(--ink); color: var(--bg);
+           border-radius: 12px; padding: 12px 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 14px; }
+  #toast[hidden] { display: none; }
+  #toast .tm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #toast button { flex: none; background: none; border: 0; color: var(--bg); font-weight: 800; text-decoration: underline; cursor: pointer; padding: 2px; }
+  @media (max-width: 420px) { .stat b { font-size: 19px; } .bar { padding: 8px 16px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<header><h1 id="title">업무스케줄</h1><button id="copy" hidden>복사</button></header>
-<main><p class="msg" id="msg">불러오는 중…</p><pre id="text" hidden></pre></main>
+<header><div class="bar">
+  <div class="ttl"><h1 id="title">업무스케줄</h1><p id="sub"></p></div>
+  <button class="btn" id="copy" hidden>복사</button>
+</div></header>
+<main>
+  <p class="msg" id="msg">불러오는 중…</p>
+  <div id="view" hidden></div>
+  <pre class="plain" id="text" hidden></pre>
+</main>
+<div id="toast" role="status" aria-live="polite" hidden><span class="tm" id="toastMsg"></span><button id="toastBtn" hidden></button></div>
 <script>
-// 보고서는 r/<id>.bin 에 AES-GCM으로 암호화돼 있고, 열쇠는 카톡 링크의 # 뒤에만 있다.
+// 두 가지로 열린다.
+//  ① 카톡 '보고서 열기' (100gob.github.io): r/<id>.bin 을 카톡 링크 # 뒤 열쇠로 풀어 09:00 기준 목록을 보여 준다(읽기만).
+//     업무스케줄 v2 자료가 아니면(캡스 근태·폐점·현황판 보고) 예전처럼 글 전체를 보여 준다.
+//  ② 이 PC 화면 (http://127.0.0.1:8765): 지금 스케줄 파일을 읽고, 진행완료·되돌리기가 바로 파일에 반영된다.
 const $ = id => document.getElementById(id);
+const LIVE = location.protocol === 'http:' && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+const PC_URL = 'http://127.0.0.1:8765/';
 const fromB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 const show = m => { $('msg').textContent = m; $('msg').hidden = false; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rich = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+const store = { get(k, d) { try { const v = localStorage.getItem('ws.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem('ws.' + k, JSON.stringify(v)); } catch (e) { /* 저장 안 돼도 화면은 됨 */ } } };
 
-async function load() {
+let data = null;
+const opened = new Set();
+let filter = 'all', query = '';
+const DEFAULT_CLOSED = { later: true, done: true, dash: true };
+const isClosed = k => store.get('closed.' + k, !!DEFAULT_CLOSED[k]);
+
+// ---------- 불러오기 ----------
+async function loadSealed() {
   const [id, key] = location.hash.slice(1).split('.');
   if (!id || !key || !/^[\w-]+$/.test(id)) { show('카톡으로 받은 링크로 열어주세요.'); return; }
-
-  // 방금 올린 보고서는 페이지 반영까지 1~2분 걸릴 수 있어 잠시 기다린다
   let res;
-  for (let i = 0; i < 36; i++) {
+  for (let i = 0; i < 36; i++) {   // 방금 올린 보고서는 페이지 반영까지 1~2분 걸릴 수 있다
     res = await fetch('r/' + id + '.bin', { cache: 'no-store' });
     if (res.ok) break;
     show('보고서를 올리는 중이에요. 잠시만 기다려주세요…');
     await wait(5000);
   }
   if (!res.ok) { show('보고서를 찾지 못했어요. 잠시 뒤 다시 열어주세요.'); return; }
-
+  let d;
   try {
     const buf = new Uint8Array(await res.arrayBuffer());
     const k = await crypto.subtle.importKey('raw', fromB64u(key), 'AES-GCM', false, ['decrypt']);
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
-    const data = JSON.parse(new TextDecoder().decode(plain));
-    document.title = data.title;
-    $('title').textContent = data.title;
-    $('text').textContent = data.text;
-    $('text').hidden = false;
-    $('msg').hidden = true;
-    $('copy').hidden = false;
-    $('copy').onclick = () => copy(data.text);
+    d = JSON.parse(new TextDecoder().decode(plain));
+  } catch (e) { show('링크가 올바르지 않아 보고서를 열 수 없어요.'); return; }
+  document.title = d.title; $('title').textContent = d.title;
+  setCopy(() => d.text || '');
+  if (d.v === 2 && Array.isArray(d.groups)) { data = d; $('sub').textContent = '09:00 기준 · 줄을 누르면 상세'; render(); }
+  else { $('text').textContent = d.text; $('text').hidden = false; $('msg').hidden = true; }
+}
+async function loadLive(quiet) {
+  try {
+    const res = await fetch('/api/data', { cache: 'no-store' });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || res.status);
+    data = d;
+    document.title = d.title + ' (이 PC)'; $('title').textContent = d.title;
+    $('sub').textContent = '이 PC 화면 · 진행완료하면 바로 반영';
+    setCopy(() => liveText());
+    render();
+  } catch (e) { if (!quiet) show('스케줄 파일을 읽지 못했어요: ' + e.message); }
+}
+function setCopy(getText) {
+  $('copy').hidden = false;
+  $('copy').onclick = async () => {
+    const text = getText();
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {   // 카톡 인앱 브라우저처럼 클립보드 API가 막힌 경우
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    $('copy').textContent = '복사됨 ✓'; setTimeout(() => { $('copy').textContent = '복사'; }, 2000);
+  };
+}
+function liveText() {
+  const out = [`[${data.title}]`];
+  for (const g of data.groups) {
+    if (!g.items.length) continue;
+    out.push(`■ ${g.name}`);
+    for (const it of g.items) out.push([it.dateLabel, it.when, (it.star ? '★' : '') + it.title, /대기|진행/.test(it.status) ? `[${it.status}]` : ''].filter(Boolean).join(' '));
+  }
+  return out.join('\n');
+}
+
+// ---------- 그리기 ----------
+const match = it => {
+  if (filter === 'star' && !it.star) return false;
+  if (filter === 'wait' && !/대기/.test(it.status)) return false;
+  if (filter === 'prog' && !/진행/.test(it.status)) return false;
+  if (query) { const q = query.toLowerCase(); return [it.title, it.rest, it.memo, it.src, it.rule].join(' ').toLowerCase().includes(q); }
+  return true;
+};
+function rowHtml(it, gkey) {
+  const cls = ['row', LIVE ? '' : 'snap', gkey === 'over' ? 'over' : '', it.star ? 'star' : '', opened.has(it.id) ? 'open' : ''].filter(Boolean).join(' ');
+  const due = it.kind === 'todo'
+    ? (it.reg ? `<span>${esc(it.reg.slice(0, 5))} 등록</span>` : '')
+    : `<span class="due ${it.diff < 0 ? 'over' : it.diff === 0 ? 'today' : ''}">${esc(it.when)}</span><span>${esc(it.dateLabel)}</span>`;
+  const tag = /대기/.test(it.status) ? '<span class="tag wait">대기</span>' : /진행/.test(it.status) ? '<span class="tag prog">진행</span>' : '';
+  const rep = it.rule ? `<span class="tag rep">${esc(it.rule)}</span>` : '';
+  let h = `<li class="${cls}" data-id="${esc(it.id)}">`;
+  h += LIVE ? `<button class="chk" data-act="done" aria-label="진행완료: ${esc(it.title)}" title="진행완료"><i></i></button>` : '<span></span>';
+  h += `<div class="main" data-act="toggle" role="button" tabindex="0" aria-expanded="${opened.has(it.id)}"><div class="t">${it.star ? '<span class="s">★</span>' : ''}${esc(it.title)}</div><div class="meta">${due}${tag}${rep}</div></div>`;
+  if (opened.has(it.id)) {
+    const rows = [];
+    if (it.rest) rows.push(['할 일', rich(it.rest)]);
+    if (it.memo) rows.push(['메모', rich(it.memo)]);
+    if (it.src) rows.push(['출처', rich(it.src)]);
+    if (it.kind !== 'todo') rows.push(['날짜', esc(it.dateLabel + (it.rule ? ` · ${it.rule}` : ''))]);
+    else if (it.reg) rows.push(['등록', esc(it.reg)]);
+    if (it.status) rows.push(['상태', esc(it.status)]);
+    h += `<div class="detail"><dl>${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>`;
+    h += LIVE
+      ? `<div class="acts"><button class="btn primary" data-act="done">진행완료</button><span class="hint">${it.kind === 'repeat' ? '이번 회차만 완료돼요(반복은 그대로)' : "'끝난 일'로 옮겨요 · 되돌리기 가능"}</span></div>`
+      : `<div class="acts"><span class="hint">진행완료 표시는 회사 PC(원격 포함) <a href="${PC_URL}">업무스케줄 화면</a>에서 해요</span></div>`;
+    h += '</div>';
+  }
+  return h + '</li>';
+}
+function groupHtml(key, name, inner, count, extraCls) {
+  const closed = isClosed(key);
+  return `<section class="grp" id="g-${key}"><button class="gh ${extraCls || ''}" data-act="fold" data-key="${key}" aria-expanded="${!closed}"><span class="nm">${esc(name)}</span><span class="ct">${count}</span><span class="chev">▾</span></button>${closed ? '' : inner}</section>`;
+}
+function render() {
+  const G = Object.fromEntries(data.groups.map(g => [g.key, g]));
+  const all = data.groups.flatMap(g => g.items);
+  const cnt = k => (G[k] ? G[k].items.length : 0);
+  let h = '';
+
+  // 요약 숫자(누르면 그 묶음으로)
+  const stats = [['over', '기한 지남'], ['today', '오늘'], ['week', '7일 안'], ['todo', '날짜 없음']];
+  h += '<div class="stats">' + stats.map(([k, n]) => `<div class="stat ${k} ${cnt(k) ? '' : 'zero'}" data-act="jump" data-key="${k}"><b>${cnt(k)}</b><span>${n}</span></div>`).join('') + '</div>';
+
+  // 검색·필터
+  const fc = { all: all.length, star: all.filter(x => x.star).length, wait: all.filter(x => /대기/.test(x.status)).length, prog: all.filter(x => /진행/.test(x.status)).length };
+  h += `<div class="tools"><input class="search" id="q" type="search" placeholder="검색 (제목·메모·출처)" value="${esc(query)}" autocomplete="off"><div class="chips">`
+     + [['all', '전체'], ['star', '★ 중요'], ['wait', '대기'], ['prog', '진행']].map(([k, n]) => `<button class="chip" data-act="filter" data-key="${k}" aria-pressed="${filter === k}">${n} ${fc[k]}</button>`).join('')
+     + '</div></div>';
+
+  if (!LIVE) h += `<div class="note">09:00에 만든 보기예요. <b>진행완료 표시</b>는 회사 PC(원격 포함)에서 <a href="${PC_URL}">업무스케줄 화면</a>을 열어 주세요.</div>`;
+  if (data.bad && data.bad.length) h += `<div class="warn"><b>날짜·주기를 못 읽은 줄 ${data.bad.length}건</b> — Claude에게 고쳐 달라고 하세요.<br>${data.bad.map(esc).join('<br>')}</div>`;
+  if (data.newFiles && data.newFiles.length) h += `<div class="warn"><b>새 자료 ${data.newFiles.length}건</b>(아직 일정 등록 전): ${data.newFiles.map(esc).join(', ')}</div>`;
+
+  let shown = 0;
+  for (const g of data.groups) {
+    const xs = g.items.filter(match);
+    if (!xs.length && (filter !== 'all' || query || g.key === 'later')) continue;
+    shown += xs.length;
+    const inner = xs.length ? `<ul class="list">${xs.map(it => rowHtml(it, g.key)).join('')}</ul>`
+                            : `<ul class="list"><li class="empty">${g.key === 'over' ? '지난 일 없음' : g.key === 'today' ? '오늘 할 일 없음' : '없음'}</li></ul>`;
+    h += groupHtml(g.key, g.name, inner, xs.length, g.key);
+  }
+  if (!shown && (filter !== 'all' || query)) h += '<p class="empty">찾는 항목이 없어요.</p>';
+
+  if (LIVE && data.recentDone && data.recentDone.length) {
+    const inner = `<ul class="list doneList">${data.recentDone.map(x => `<li><span class="dt">${esc(x.title)}</span><button class="linkbtn" data-act="undo" data-log="${esc(x.logId)}">되돌리기</button></li>`).join('')}</ul>`;
+    h += groupHtml('done', '오늘 완료', inner, data.recentDone.length);
+  }
+  if (data.dash && data.dash.text) {
+    const inner = `<ul class="list"><li><pre class="dash">${esc(data.dash.text)}</pre></li></ul>`;
+    h += groupHtml('dash', '업무 현황판' + (data.dash.summary ? ' · ' + data.dash.summary.split(' — ')[0] : ''), inner, data.dash.generated ? data.dash.generated.slice(11, 16) : '');
+  }
+
+  const view = $('view');
+  const hadFocus = document.activeElement && document.activeElement.id === 'q';
+  const pos = hadFocus ? document.activeElement.selectionStart : 0;
+  view.innerHTML = h; view.hidden = false; $('msg').hidden = true;
+  if (hadFocus) { const q = $('q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) {} }
+}
+
+// ---------- 동작 ----------
+let toastTimer = null;
+function toast(msg, btnText, onBtn) {
+  $('toastMsg').textContent = msg;
+  const b = $('toastBtn');
+  if (btnText) { b.textContent = btnText; b.hidden = false; b.onclick = () => { $('toast').hidden = true; onBtn(); }; } else b.hidden = true;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, btnText ? 9000 : 4000);
+}
+async function api(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Schedule': '1' }, body: JSON.stringify(body) });
+  let j = {}; try { j = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(j.error || ('오류 ' + res.status));
+  return j;
+}
+async function doDone(id) {
+  const li = document.querySelector(`li.row[data-id="${CSS.escape(id)}"]`);
+  if (!li || li.classList.contains('doing')) return;
+  li.classList.add('doing');
+  try {
+    const r = await api('/api/done', { id });
+    await wait(250); li.classList.add('gone'); await wait(250);
+    opened.delete(id);
+    await loadLive(true);
+    toast(`완료: ${r.title}`, '되돌리기', () => doUndo(r.logId));
   } catch (e) {
-    show('링크가 올바르지 않아 보고서를 열 수 없어요.');
+    li.classList.remove('doing');
+    toast(e.message);
+    loadLive(true);
   }
 }
-
-async function copy(text) {
-  try { await navigator.clipboard.writeText(text); }
-  catch (e) {
-    // 카톡 인앱 브라우저처럼 클립보드 API가 막힌 경우
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-  }
-  $('copy').textContent = '복사됨 ✓';
-  setTimeout(() => { $('copy').textContent = '복사'; }, 2000);
+async function doUndo(logId) {
+  try { const r = await api('/api/undo', { logId }); await loadLive(true); toast(`되돌림: ${r.title}`); }
+  catch (e) { toast(e.message); }
 }
-
-load();
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  const li = el.closest('li.row');
+  if (act === 'toggle' && li) { const id = li.dataset.id; opened.has(id) ? opened.delete(id) : opened.add(id); render(); }
+  else if (act === 'done' && li) { e.preventDefault(); doDone(li.dataset.id); }
+  else if (act === 'undo') doUndo(el.dataset.log);
+  else if (act === 'fold') { const k = el.dataset.key; store.set('closed.' + k, !isClosed(k)); render(); }
+  else if (act === 'filter') { filter = el.dataset.key; render(); }
+  else if (act === 'jump') {
+    const k = el.dataset.key;
+    if (isClosed(k)) { store.set('closed.' + k, false); }
+    filter = 'all'; query = ''; render();
+    const s = $('g-' + k); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.main[data-act="toggle"]')) { e.preventDefault(); e.target.click(); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'q') { query = e.target.value.trim(); render(); } });
+if (LIVE) {
+  // 다른 곳(Claude 등)에서 파일을 고쳤을 수 있으니 화면으로 돌아오면 다시 읽는다
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLive(true); });
+  loadLive();
+} else {
+  loadSealed();
+}
 </script>
 </body>
 </html>
