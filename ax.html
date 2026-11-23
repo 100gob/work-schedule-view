@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>AX 프로젝트 보드로 이동</title>
+<style>body{font:16px/1.6 system-ui,-apple-system,"Malgun Gothic",sans-serif;margin:0;padding:32px 20px;color:#1d2126;background:#f5f5f2}a{color:#2c5a86}</style>
+</head>
+<body>
+<p>AX 프로젝트 보드로 이동합니다…</p>
+<p><a id="go" href="https://claude.ai/artifact/8ZwtrM8T9Py16KHcHGBMVy#today">넘어가지 않으면 여기를 누르세요</a></p>
+<p style="font-size:13px;color:#686761">카카오톡 안에서는 휴대폰 기본 브라우저로 엽니다. claude.ai에 회사 계정(보드 주인)으로 로그인돼 있어야 보입니다.</p>
+<script>
+// 카톡 버튼은 카카오 앱에 등록된 도메인 아래 주소만 열 수 있어서, 여기서 claude.ai 보드로 넘긴다(2026-11-23). 보고 내용은 이 페이지에 없다.
+(function(){
+  var h = (location.hash || '').replace(/[^#a-z0-9-]/gi, '');
+  var u = 'https://claude.ai/artifact/8ZwtrM8T9Py16KHcHGBMVy' + (h && h.length > 1 ? h : '#today');
+  document.getElementById('go').href = u;
+  if (/KAKAOTALK/i.test(navigator.userAgent)) { location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(u); }
+  else { location.replace(u); }
+})();
+</script>
+</body>
+</html>
