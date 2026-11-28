@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>보기 전용 페이지</title>
+<style>
+  :root { --bg: #f6f6f4; --card: #fff; --ink: #1d1d1b; --sub: #66655f; --line: #d9d8d2; --accent: #1f5fbf; --bad: #b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #171716; --card: #222220; --ink: #ecebe6; --sub: #a9a8a1; --line: #3a3a37; --accent: #7fb0ff; --bad: #ff8a80; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Malgun Gothic", sans-serif; }
+  main { max-width: 420px; margin: 12vh auto 0; padding: 0 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 24px 20px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p { margin: 0 0 16px; color: var(--sub); font-size: 14px; }
+  p.bad { color: var(--bad); }
+  input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 18px; letter-spacing: .06em; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  label { display: flex; gap: 8px; align-items: center; margin: 12px 0 16px; font-size: 14px; color: var(--sub); }
+  button { width: 100%; font: inherit; font-weight: 600; padding: 11px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>보기 전용 페이지</h1>
+    <p id="msg">받은 비밀번호를 넣어 주세요.</p>
+    <form id="f" hidden>
+      <input id="pw" type="password" autocomplete="current-password" autocapitalize="characters" spellcheck="false" placeholder="예: ABCD-EFGH-JKLM" aria-label="비밀번호">
+      <label><input type="checkbox" id="rem" checked> 이 기기에서 기억하기</label>
+      <button id="go">열기</button>
+    </form>
+  </div>
+</main>
+<script>
+(function () {
+  var KEY = 'pnl_view_k1';
+  var $ = function (id) { return document.getElementById(id); };
+  function say(t, bad) { $('msg').textContent = t; $('msg').className = bad ? 'bad' : ''; }
+  function b64(s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function tob64(buf) { var u = new Uint8Array(buf), s = ''; for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); }
+  function norm(p) { return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function readSaved() { try { var v = JSON.parse(localStorage.getItem(KEY) || 'null'); return v && v.salt && v.k ? v : null; } catch (e) { return null; } }
+  function save(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { } }
+  function forget() { try { localStorage.removeItem(KEY); } catch (e) { } }
+
+  async function getDoc() {
+    var r = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('자료 파일을 받지 못했습니다(' + r.status + ').');
+    return r.json();
+  }
+  async function derive(pass, doc) {
+    var base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+    return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(doc.salt), iterations: doc.iter }, base, 256);
+  }
+  async function unseal(raw, doc) {
+    var k = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(doc.iv) }, k, b64(doc.ct));
+    var s = new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new Response(s).text();
+  }
+  function show(html) { document.open(); document.write(html); document.close(); }
+
+  var doc = null;
+  async function start() {
+    if (!window.crypto || !crypto.subtle || typeof DecompressionStream === 'undefined') { say('이 브라우저에서는 열 수 없습니다. 최신 크롬·사파리·엣지로 열어 주세요.', true); return; }
+    try { doc = await getDoc(); } catch (e) { say(e.message || '자료를 받지 못했습니다.', true); return; }
+    var saved = readSaved();
+    if (saved && saved.salt === doc.salt) {
+      say('여는 중…');
+      try { show(await unseal(b64(saved.k), doc)); return; } catch (e) { forget(); }
+    }
+    say('받은 비밀번호를 넣어 주세요.');
+    $('f').hidden = false; $('pw').focus();
+  }
+  $('f').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var pass = norm($('pw').value);
+    if (pass.length < 12) { say('비밀번호를 끝까지 넣어 주세요.', true); return; }
+    $('go').disabled = true; say('확인하는 중… (몇 초 걸립니다)');
+    try {
+      var raw = await derive(pass, doc);
+      var html = await unseal(raw, doc);
+      if ($('rem').checked) save({ salt: doc.salt, k: tob64(raw) });
+      show(html);
+    } catch (e) {
+      $('go').disabled = false; say('비밀번호가 맞지 않습니다. 다시 확인해 주세요.', true);
+    }
+  });
+  start();
+})();
+</script>
+</body>
+</html>
